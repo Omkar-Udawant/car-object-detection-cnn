@@ -1,0 +1,5 @@
+train: C:\Users\OMKAR\OneDrive\Desktop\car-object-detection-cnn\dataset\images\train
+val: C:\Users\OMKAR\OneDrive\Desktop\car-object-detection-cnn\dataset\images\val
+
+names:
+  0: car

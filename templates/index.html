@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Car Object Detection AI</title>
+    <!-- Link to our external CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', path='css/styles.css') }}">
+</head>
+<body>
+
+    <!-- Animated Background Element -->
+    <div class="bg-animation"></div>
+
+    <div class="container">
+        <h1>Car Object Detection</h1>
+        <p class="subtitle">Upload an image or use your webcam to detect cars in real-time.</p>
+
+        <!-- Mode Toggle -->
+        <div class="mode-toggle">
+            <button class="mode-btn active" id="mode-upload">Image Upload</button>
+            <button class="mode-btn" id="mode-webcam">Live Webcam</button>
+        </div>
+
+        <form id="upload-form">
+            <!-- Drop Area -->
+            <div class="upload-area" id="drop-area">
+                <span class="upload-icon">📷</span>
+                <h3>Drag & Drop your image here</h3>
+                <p style="margin-top: 8px; color: #cbd5e1; font-weight: 300;">or click to browse</p>
+                <input type="file" id="file-input" accept="image/png, image/jpeg, image/jpg">
+            </div>
+
+            <!-- Preview Area -->
+            <div class="preview-container" id="preview-container">
+                <img id="image-preview" src="#" alt="Preview">
+                <!-- Laser Scanner Animation Overlay -->
+                <div class="scanner" id="scanner"></div>
+                <!-- Remove Button -->
+                <button type="button" class="remove-btn" id="remove-btn">×</button>
+            </div>
+
+            <!-- Submit Button -->
+            <button type="submit" class="btn" id="predict-btn" disabled>Detect Car</button>
+        </form>
+
+        <!-- Webcam Container -->
+        <div id="webcam-container" style="display: none;">
+            <div class="webcam-wrapper">
+                <video id="webcam-video" autoplay playsinline muted></video>
+                <canvas id="webcam-canvas"></canvas>
+            </div>
+            <button type="button" class="btn" id="start-webcam-btn">Start Webcam</button>
+        </div>
+
+        <p id="loading-text">Analyzing image data...</p>
+
+        <!-- Results Area -->
+        <div class="result-container" id="result-container">
+            <h3 class="result-title" id="result-title">Result</h3>
+            
+            <div class="prob-wrapper">
+                <div class="prob-header">
+                    <span>Confidence</span>
+                    <span id="prob-percent">0%</span>
+                </div>
+                <!-- Animated Progress Bar -->
+                <div class="progress-bg">
+                    <div class="progress-fill" id="progress-fill"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Link to our external JS -->
+    <script src="{{ url_for('static', path='js/main.js') }}"></script>
+</body>
+</html>

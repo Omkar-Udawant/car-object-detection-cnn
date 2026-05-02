@@ -1,0 +1,21 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual Environments
+venv/
+env/
+.env
+
+# YOLO weights (large files, will be downloaded automatically)
+*.pt
+
+# Uploads and Data
+uploads/
+data/
+dataset/
+
+# Mac / Windows system files
+.DS_Store
+Thumbs.db
