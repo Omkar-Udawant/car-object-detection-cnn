@@ -40,6 +40,9 @@ async def detect(file: UploadFile = File(...)):
         return JSONResponse(status_code=500, content={"error": "Model not loaded. Please train the model first."})
     
     try:
+        import time
+        start_time = time.time()
+        
         contents = await file.read()
         nparr = np.frombuffer(contents, np.uint8)
         img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
@@ -55,13 +58,58 @@ async def detect(file: UploadFile = File(...)):
         results = model.predict(img, conf=0.5, iou=0.45, agnostic_nms=True, classes=[2, 5, 7])
         result = results[0]
         
+        inference_time_ms = int((time.time() - start_time) * 1000)
+        
         cars_detected = len(result.boxes)
         boxes_data = []
         confidence_scores = []
+        detected_objects = []
         
-        for box in result.boxes:
-            boxes_data.append(box.xyxy[0].tolist())
-            confidence_scores.append(float(box.conf[0]))
+        class_names = {2: "Car", 5: "Bus", 7: "Truck"}
+        
+        for i, box in enumerate(result.boxes):
+            bbox = box.xyxy[0].tolist()
+            conf = float(box.conf[0])
+            cls_id = int(box.cls[0])
+            cls_name = class_names.get(cls_id, "Vehicle")
+            
+            boxes_data.append(bbox)
+            confidence_scores.append(conf)
+            
+            detected_objects.append({
+                "id": i + 1,
+                "class": cls_name,
+                "confidence": conf,
+                "bbox": bbox
+            })
+            
+        # Compute Traffic Intelligence Metrics
+        total_vehicles = len(detected_objects)
+        heavy_vehicles = sum(1 for obj in detected_objects if obj["class"] in ["Bus", "Truck"])
+        
+        if total_vehicles == 0:
+            congestion_level = "CLEAR"
+        elif total_vehicles <= 3:
+            congestion_level = "LOW"
+        elif total_vehicles <= 7:
+            congestion_level = "MODERATE"
+        else:
+            congestion_level = "HIGH"
+            
+        suggestions = []
+        if congestion_level == "HIGH":
+            suggestions.append({"type": "critical", "text": "Critical congestion detected. Deploy traffic officers to manually regulate flow."})
+            suggestions.append({"type": "warning", "text": "Consider extending green light duration on main corridor."})
+        elif congestion_level == "MODERATE":
+            suggestions.append({"type": "warning", "text": "Moderate traffic building up. Monitor intersection closely for potential gridlock."})
+        elif congestion_level == "LOW" and total_vehicles > 0:
+            suggestions.append({"type": "info", "text": "Traffic is flowing smoothly. Maintain standard automated signal timings."})
+            
+        if heavy_vehicles >= 2:
+            suggestions.append({"type": "warning", "text": f"High volume of heavy vehicles ({heavy_vehicles} detected). Consider enforcing lane restrictions."})
+            
+        if total_vehicles == 0:
+            suggestions.append({"type": "info", "text": "No vehicles detected. Road is completely clear."})
             
         # Get annotated image
         annotated_img = result.plot()
@@ -74,7 +122,12 @@ async def detect(file: UploadFile = File(...)):
             "cars_detected": cars_detected,
             "boxes": boxes_data,
             "confidence_scores": confidence_scores,
-            "annotated_image_base64": img_base64
+            "detected_objects": detected_objects,
+            "congestion_level": congestion_level,
+            "heavy_vehicles": heavy_vehicles,
+            "suggestions": suggestions,
+            "annotated_image_base64": img_base64,
+            "inference_time_ms": inference_time_ms
         }
         
     except Exception as e:
