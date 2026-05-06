@@ -1,24 +1,34 @@
 document.addEventListener('DOMContentLoaded', () => {
     const dropArea = document.getElementById('drop-area');
     const fileInput = document.getElementById('file-input');
-    const previewContainer = document.getElementById('preview-container');
-    const imagePreview = document.getElementById('image-preview');
-    const removeBtn = document.getElementById('remove-btn');
-    const predictBtn = document.getElementById('predict-btn');
     const uploadForm = document.getElementById('upload-form');
-    const scanner = document.getElementById('scanner');
+    const uploadCard = document.getElementById('upload-card');
+    const resultSection = document.getElementById('result-section');
     const loadingText = document.getElementById('loading-text');
+    const optimizerSection = document.getElementById('optimizer-section');
+    const uploadAnotherBtn = document.getElementById('upload-another-btn');
     
-    const resultContainer = document.getElementById('result-container');
-    const resultTitle = document.getElementById('result-title');
-    const probPercentText = document.getElementById('prob-percent');
-    const progressFill = document.getElementById('progress-fill');
+    // Result elements
+    const resultImage = document.getElementById('result-image');
+    const predText = document.getElementById('pred-text');
+    const predBadge = document.getElementById('pred-badge');
+    const confVal = document.getElementById('conf-val');
+    const confBadge = document.getElementById('conf-badge');
+    const confBar = document.getElementById('conf-bar');
+    const inferVal = document.getElementById('infer-val');
+    
+    const probBarCar = document.getElementById('prob-bar-car');
+    const probValCar = document.getElementById('prob-val-car');
+    const probBarNotCar = document.getElementById('prob-bar-not-car');
+    const probValNotCar = document.getElementById('prob-val-not-car');
 
     let currentFile = null;
 
     // Click to upload
-    dropArea.addEventListener('click', () => {
-        if(!currentFile) fileInput.click();
+    dropArea.addEventListener('click', (e) => {
+        if(e.target !== fileInput && !currentFile) {
+            fileInput.click();
+        }
     });
 
     // Drag and drop events
@@ -54,55 +64,30 @@ document.addEventListener('DOMContentLoaded', () => {
             const file = files[0];
             if (file.type.startsWith('image/')) {
                 currentFile = file;
-                
-                // Show preview
-                const reader = new FileReader();
-                reader.onload = (e) => {
-                    imagePreview.src = e.target.result;
-                    dropArea.style.display = 'none';
-                    previewContainer.style.display = 'block';
-                    predictBtn.disabled = false;
-                    
-                    // Reset UI
-                    resultContainer.style.display = 'none';
-                    scanner.style.display = 'none';
-                    progressFill.style.width = '0%';
-                };
-                reader.readAsDataURL(file);
+                processImage(currentFile);
             } else {
                 alert("Please upload a valid image file.");
             }
         }
     }
 
-    // Remove selected image
-    removeBtn.addEventListener('click', () => {
+    uploadAnotherBtn.addEventListener('click', () => {
         currentFile = null;
         fileInput.value = '';
-        imagePreview.src = '#';
-        dropArea.style.display = 'block';
-        previewContainer.style.display = 'none';
-        predictBtn.disabled = true;
-        resultContainer.style.display = 'none';
-        scanner.style.display = 'none';
-        progressFill.style.width = '0%';
+        resultSection.style.display = 'none';
+        uploadCard.style.display = 'block';
+        if(optimizerSection) optimizerSection.style.display = 'block';
     });
 
-    // Handle form submission
-    uploadForm.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        if (!currentFile) return;
-
+    async function processImage(file) {
         const formData = new FormData();
-        formData.append('file', currentFile);
+        formData.append('file', file);
 
         // UI Updates for Loading State
-        predictBtn.disabled = true;
-        predictBtn.textContent = 'Processing...';
-        scanner.style.display = 'block'; // Start scanning animation
+        uploadCard.style.display = 'none';
+        if(optimizerSection) optimizerSection.style.display = 'none';
         loadingText.style.display = 'block';
-        resultContainer.style.display = 'none';
-        progressFill.style.width = '0%';
+        resultSection.style.display = 'none';
 
         try {
             const response = await fetch('/detect', {
@@ -113,211 +98,153 @@ document.addEventListener('DOMContentLoaded', () => {
             const data = await response.json();
             
             if (response.ok) {
-                // Update preview image with YOLO annotated image
-                imagePreview.src = `data:image/jpeg;base64,${data.annotated_image_base64}`;
+                // Show result section
+                loadingText.style.display = 'none';
+                resultSection.style.display = 'block';
+                
+                // Set Image
+                resultImage.src = `data:image/jpeg;base64,${data.annotated_image_base64}`;
+                
+                // Inference time
+                inferVal.textContent = data.inference_time_ms || 0;
+                
+                const detailsCard = document.getElementById('details-card');
+                const detailsTableBody = document.getElementById('details-table-body');
+                const suggestionsCard = document.getElementById('suggestions-card');
+                const suggestionsContainer = document.getElementById('suggestions-container');
+                
+                // Populate Suggestions
+                if (suggestionsCard && suggestionsContainer && data.suggestions && data.suggestions.length > 0) {
+                    suggestionsCard.style.display = 'block';
+                    suggestionsContainer.innerHTML = '';
+                    data.suggestions.forEach(sugg => {
+                        const alertDiv = document.createElement('div');
+                        alertDiv.className = `suggestion-alert ${sugg.type}`;
+                        
+                        let iconHtml = '';
+                        if (sugg.type === 'critical') {
+                            iconHtml = '<svg class="suggestion-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>';
+                        } else if (sugg.type === 'warning') {
+                            iconHtml = '<svg class="suggestion-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>';
+                        } else {
+                            iconHtml = '<svg class="suggestion-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>';
+                        }
+                        
+                        alertDiv.innerHTML = `${iconHtml}<div class="suggestion-content">${sugg.text}</div>`;
+                        suggestionsContainer.appendChild(alertDiv);
+                    });
+                } else if (suggestionsCard) {
+                    suggestionsCard.style.display = 'none';
+                }
                 
                 if (data.cars_detected > 0) {
-                    resultTitle.textContent = `${data.cars_detected} Car(s) Detected`;
-                    resultContainer.className = 'result-container success';
+                    predText.textContent = data.congestion_level || "UNKNOWN";
+                    predText.style.fontSize = '4.5rem';
                     
-                    // Show max confidence
+                    let statusColor = 'var(--accent-green)';
+                    let badgeBg = 'rgba(34, 197, 94, 0.1)';
+                    if (data.congestion_level === 'HIGH') {
+                        statusColor = '#ef4444';
+                        badgeBg = 'rgba(239, 68, 68, 0.1)';
+                    } else if (data.congestion_level === 'MODERATE') {
+                        statusColor = 'var(--accent-yellow)';
+                        badgeBg = 'rgba(234, 179, 8, 0.1)';
+                    }
+                    
+                    predText.style.color = statusColor;
+                    predBadge.style.color = statusColor;
+                    predBadge.style.background = badgeBg;
+                    predBadge.innerHTML = `<svg fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" width="14" height="14"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg> Traffic Status`;
+                    
                     const maxConf = Math.max(...data.confidence_scores);
                     const percent = (maxConf * 100).toFixed(1);
-                    probPercentText.textContent = `${percent}% (Max Conf)`;
-                    setTimeout(() => { progressFill.style.width = `${percent}%`; }, 100);
+                    
+                    confVal.textContent = `${percent}%`;
+                    setTimeout(() => { confBar.style.width = `${percent}%`; }, 100);
+                    
+                    if (maxConf > 0.8) {
+                        confBadge.textContent = 'HIGH';
+                        confBadge.style.color = 'var(--accent-green)';
+                        confBadge.style.background = 'rgba(34, 197, 94, 0.15)';
+                        confBar.style.background = 'var(--accent-green)';
+                    } else {
+                        confBadge.textContent = 'MEDIUM';
+                        confBadge.style.color = 'var(--accent-yellow)';
+                        confBadge.style.background = 'rgba(234, 179, 8, 0.15)';
+                        confBar.style.background = 'var(--accent-yellow)';
+                    }
+                    
+                    // Class Probs
+                    probValCar.textContent = `${percent}%`;
+                    probValNotCar.textContent = `${(100 - percent).toFixed(1)}%`;
+                    
+                    setTimeout(() => { 
+                        probBarCar.style.width = `${percent}%`; 
+                        probBarNotCar.style.width = `${(100 - percent).toFixed(1)}%`; 
+                    }, 100);
+                    
+                    // Populate Details Table
+                    detailsTableBody.innerHTML = '';
+                    if (data.detected_objects && data.detected_objects.length > 0) {
+                        if(detailsCard) detailsCard.style.display = 'block';
+                        data.detected_objects.forEach(obj => {
+                            const tr = document.createElement('tr');
+                            
+                            const tdId = document.createElement('td');
+                            tdId.textContent = `Vehicle ${obj.id}`;
+                            tr.appendChild(tdId);
+                            
+                            const tdType = document.createElement('td');
+                            const badge = document.createElement('span');
+                            badge.className = `type-badge ${obj.class.toLowerCase()}`;
+                            badge.textContent = obj.class;
+                            tdType.appendChild(badge);
+                            tr.appendChild(tdType);
+                            
+                            const tdConf = document.createElement('td');
+                            tdConf.textContent = `${(obj.confidence * 100).toFixed(1)}%`;
+                            tr.appendChild(tdConf);
+                            
+                            detailsTableBody.appendChild(tr);
+                        });
+                    } else {
+                        if(detailsCard) detailsCard.style.display = 'none';
+                    }
+                    
                 } else {
-                    resultTitle.textContent = "No Cars Detected";
-                    resultContainer.className = 'result-container error';
-                    probPercentText.textContent = "N/A";
-                    setTimeout(() => { progressFill.style.width = `0%`; }, 100);
+                    predText.textContent = 'CLEAR';
+                    predText.style.fontSize = '4.5rem';
+                    predText.style.color = 'var(--accent-green)';
+                    predBadge.style.color = 'var(--accent-green)';
+                    predBadge.style.background = 'rgba(34, 197, 94, 0.1)';
+                    predBadge.innerHTML = '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" width="14" height="14"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg> Traffic Status';
+                    
+                    confVal.textContent = `0.0%`;
+                    confBadge.textContent = 'LOW';
+                    confBadge.style.color = '#ef4444';
+                    confBadge.style.background = 'rgba(239, 68, 68, 0.15)';
+                    setTimeout(() => { confBar.style.width = `0%`; }, 100);
+                    
+                    probValCar.textContent = `0.0%`;
+                    probValNotCar.textContent = `100.0%`;
+                    setTimeout(() => { 
+                        probBarCar.style.width = `0%`; 
+                        probBarNotCar.style.width = `100%`; 
+                    }, 100);
+                    
+                    if(detailsCard) detailsCard.style.display = 'none';
                 }
             } else {
                 showError(data.error || "An unknown error occurred.");
             }
         } catch (error) {
             showError("Failed to connect to the server.");
-        } finally {
-            scanner.style.display = 'none';
-            loadingText.style.display = 'none';
-            predictBtn.disabled = false;
-            predictBtn.textContent = 'Detect Car';
-            resultContainer.style.display = 'block';
         }
-    });
+    }
 
     function showError(msg) {
-        resultTitle.textContent = "Error";
-        probPercentText.textContent = "0%";
-        progressFill.style.width = "0%";
-        resultContainer.className = 'result-container error';
+        loadingText.style.display = 'none';
+        uploadCard.style.display = 'block';
         alert(msg);
-    }
-
-    // --- Webcam & Mode Toggle Logic ---
-    const modeUploadBtn = document.getElementById('mode-upload');
-    const modeWebcamBtn = document.getElementById('mode-webcam');
-    const uploadFormContainer = document.getElementById('upload-form');
-    const webcamContainer = document.getElementById('webcam-container');
-    
-    const webcamVideo = document.getElementById('webcam-video');
-    const webcamCanvas = document.getElementById('webcam-canvas');
-    const startWebcamBtn = document.getElementById('start-webcam-btn');
-    
-    let webcamStream = null;
-    let webcamInterval = null;
-    let isWebcamDetecting = false;
-
-    if (modeUploadBtn && modeWebcamBtn) {
-        modeUploadBtn.addEventListener('click', () => {
-            modeUploadBtn.classList.add('active');
-            modeWebcamBtn.classList.remove('active');
-            uploadFormContainer.style.display = 'block';
-            webcamContainer.style.display = 'none';
-            stopWebcam();
-            resetResultUI();
-        });
-
-        modeWebcamBtn.addEventListener('click', () => {
-            modeWebcamBtn.classList.add('active');
-            modeUploadBtn.classList.remove('active');
-            uploadFormContainer.style.display = 'none';
-            webcamContainer.style.display = 'block';
-            resetResultUI();
-        });
-    }
-
-    if (startWebcamBtn) {
-        startWebcamBtn.addEventListener('click', async () => {
-            if (isWebcamDetecting) {
-                stopWebcam();
-                return;
-            }
-
-            try {
-                webcamStream = await navigator.mediaDevices.getUserMedia({ 
-                    video: { facingMode: 'environment', width: { ideal: 640 }, height: { ideal: 480 } } 
-                });
-                webcamVideo.srcObject = webcamStream;
-                
-                webcamVideo.onloadedmetadata = () => {
-                    webcamCanvas.width = webcamVideo.videoWidth;
-                    webcamCanvas.height = webcamVideo.videoHeight;
-                };
-
-                startWebcamBtn.textContent = 'Stop Webcam';
-                startWebcamBtn.style.background = 'var(--error-color)';
-                isWebcamDetecting = true;
-                
-                startDetectionLoop();
-            } catch (err) {
-                console.error("Error accessing webcam:", err);
-                alert("Could not access webcam. Please make sure you have granted camera permissions.");
-            }
-        });
-    }
-
-    function stopWebcam() {
-        if (webcamStream) {
-            webcamStream.getTracks().forEach(track => track.stop());
-            webcamStream = null;
-        }
-        if (webcamInterval) {
-            clearInterval(webcamInterval);
-            webcamInterval = null;
-        }
-        if (webcamVideo) webcamVideo.srcObject = null;
-        if (startWebcamBtn) {
-            startWebcamBtn.textContent = 'Start Webcam';
-            startWebcamBtn.style.background = '';
-        }
-        isWebcamDetecting = false;
-        
-        if (webcamCanvas) {
-            const ctx = webcamCanvas.getContext('2d');
-            ctx.clearRect(0, 0, webcamCanvas.width, webcamCanvas.height);
-        }
-        resetResultUI();
-    }
-
-    function resetResultUI() {
-        resultContainer.style.display = 'none';
-        resultTitle.textContent = "Result";
-        probPercentText.textContent = "0%";
-        progressFill.style.width = "0%";
-    }
-
-    async function startDetectionLoop() {
-        // Run detection every 500ms (2 FPS)
-        webcamInterval = setInterval(async () => {
-            if (!isWebcamDetecting || webcamVideo.readyState !== webcamVideo.HAVE_ENOUGH_DATA) return;
-
-            const hiddenCanvas = document.createElement('canvas');
-            hiddenCanvas.width = webcamVideo.videoWidth;
-            hiddenCanvas.height = webcamVideo.videoHeight;
-            const ctx = hiddenCanvas.getContext('2d');
-            
-            // Mirror the drawing to match the CSS scaleX(-1) so coordinates align correctly
-            ctx.translate(hiddenCanvas.width, 0);
-            ctx.scale(-1, 1);
-            ctx.drawImage(webcamVideo, 0, 0, hiddenCanvas.width, hiddenCanvas.height);
-            
-            hiddenCanvas.toBlob(async (blob) => {
-                const formData = new FormData();
-                formData.append('file', blob, 'webcam_frame.jpg');
-
-                try {
-                    const response = await fetch('/detect', { method: 'POST', body: formData });
-                    if (response.ok) {
-                        const data = await response.json();
-                        drawBoundingBoxes(data.boxes, data.confidence_scores, data.cars_detected);
-                    }
-                } catch (e) {
-                    console.error("Webcam detection error:", e);
-                }
-            }, 'image/jpeg', 0.8);
-            
-        }, 500); 
-    }
-
-    function drawBoundingBoxes(boxes, scores, count) {
-        const ctx = webcamCanvas.getContext('2d');
-        ctx.clearRect(0, 0, webcamCanvas.width, webcamCanvas.height);
-        
-        if (count > 0) {
-            resultContainer.style.display = 'block';
-            resultContainer.className = 'result-container success';
-            resultTitle.textContent = `${count} Car(s) Detected`;
-            const maxConf = Math.max(...scores);
-            const percent = (maxConf * 100).toFixed(1);
-            probPercentText.textContent = `${percent}% (Max Conf)`;
-            progressFill.style.width = `${percent}%`;
-
-            boxes.forEach((box, i) => {
-                const [x_min, y_min, x_max, y_max] = box;
-                const width = x_max - x_min;
-                const height = y_max - y_min;
-                const conf = (scores[i] * 100).toFixed(0);
-
-                ctx.strokeStyle = '#00ff00';
-                ctx.lineWidth = 3;
-                ctx.strokeRect(x_min, y_min, width, height);
-
-                ctx.fillStyle = 'rgba(0, 255, 0, 0.7)';
-                ctx.fillRect(x_min, y_min - 25, 80, 25);
-                ctx.fillStyle = '#000';
-                ctx.font = 'bold 16px Arial';
-                // Because canvas is mirrored in CSS, we draw text normally but it might appear flipped if we don't handle it.
-                // Wait! Since canvas is CSS mirrored, drawing text normally will result in mirrored text!
-                // To fix: save, translate to box center, scale(-1, 1), draw text, restore.
-                ctx.save();
-                ctx.translate(x_min + 5, y_min - 7);
-                ctx.scale(-1, 1);
-                // Adjust x to draw correctly since we scaled -1
-                ctx.fillText(`Car ${conf}%`, -70, 0); 
-                ctx.restore();
-            });
-        } else {
-            resetResultUI();
-        }
     }
 });
