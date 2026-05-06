@@ -3,76 +3,176 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Car Object Detection AI</title>
-    <!-- Link to our external CSS -->
-    <link rel="stylesheet" href="{{ url_for('static', path='css/styles.css') }}">
+    <title>Intelligent Traffic Management</title>
+    <link rel="stylesheet" href="{{ url_for('static', path='css/styles.css') }}?v=1.2">
 </head>
 <body>
 
-    <!-- Animated Background Element -->
-    <div class="bg-animation"></div>
-
-    <div class="container">
-        <h1>Car Object Detection</h1>
-        <p class="subtitle">Upload an image or use your webcam to detect cars in real-time.</p>
-
-        <!-- Mode Toggle -->
-        <div class="mode-toggle">
-            <button class="mode-btn active" id="mode-upload">Image Upload</button>
-            <button class="mode-btn" id="mode-webcam">Live Webcam</button>
+    <div class="main-container">
+        <!-- Header Section -->
+        <div class="header">
+            <div class="badge">
+                <span class="dot blue"></span> ITMS • Police Dashboard
+            </div>
+            <h1>Intelligent Traffic Management</h1>
+            <p class="subtitle">Upload traffic camera feeds for real-time congestion analysis and management suggestions.</p>
         </div>
 
-        <form id="upload-form">
-            <!-- Drop Area -->
-            <div class="upload-area" id="drop-area">
-                <span class="upload-icon">📷</span>
-                <h3>Drag & Drop your image here</h3>
-                <p style="margin-top: 8px; color: #cbd5e1; font-weight: 300;">or click to browse</p>
-                <input type="file" id="file-input" accept="image/png, image/jpeg, image/jpg">
-            </div>
-
-            <!-- Preview Area -->
-            <div class="preview-container" id="preview-container">
-                <img id="image-preview" src="#" alt="Preview">
-                <!-- Laser Scanner Animation Overlay -->
-                <div class="scanner" id="scanner"></div>
-                <!-- Remove Button -->
-                <button type="button" class="remove-btn" id="remove-btn">×</button>
-            </div>
-
-            <!-- Submit Button -->
-            <button type="submit" class="btn" id="predict-btn" disabled>Detect Car</button>
-        </form>
-
-        <!-- Webcam Container -->
-        <div id="webcam-container" style="display: none;">
-            <div class="webcam-wrapper">
-                <video id="webcam-video" autoplay playsinline muted></video>
-                <canvas id="webcam-canvas"></canvas>
-            </div>
-            <button type="button" class="btn" id="start-webcam-btn">Start Webcam</button>
+        <!-- Upload Section -->
+        <div class="card upload-card" id="upload-card">
+            <form id="upload-form">
+                <div class="upload-area" id="drop-area">
+                    <div class="upload-icon-container">
+                        <svg class="upload-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path>
+                        </svg>
+                    </div>
+                    <h3>Upload an image</h3>
+                    <p>Drop a file here or click to browse · JPG, PNG</p>
+                    <button type="button" class="btn-outline" onclick="document.getElementById('file-input').click()">
+                        <svg class="btn-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path>
+                        </svg>
+                        Choose Image
+                    </button>
+                    <input type="file" id="file-input" accept="image/png, image/jpeg, image/jpg">
+                </div>
+            </form>
         </div>
+
+        <!-- ML Optimizer Section Removed for ITMS UI -->
 
         <p id="loading-text">Analyzing image data...</p>
 
-        <!-- Results Area -->
-        <div class="result-container" id="result-container">
-            <h3 class="result-title" id="result-title">Result</h3>
+        <!-- Result Section (Initially Hidden) -->
+        <div id="result-section" style="display: none;">
             
-            <div class="prob-wrapper">
-                <div class="prob-header">
-                    <span>Confidence</span>
-                    <span id="prob-percent">0%</span>
+            <!-- Image Preview Card -->
+            <div class="card image-card">
+                <img id="result-image" src="#" alt="Annotated Image">
+                <button class="btn-outline upload-another" id="upload-another-btn">
+                    <svg class="btn-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                    </svg>
+                    Upload another
+                </button>
+            </div>
+
+            <!-- Traffic Status Card -->
+            <div class="card prediction-card">
+                <div class="pred-badge" id="pred-badge">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" width="14" height="14"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                    Traffic Status
                 </div>
-                <!-- Animated Progress Bar -->
-                <div class="progress-bg">
-                    <div class="progress-fill" id="progress-fill"></div>
+                <h1 class="pred-text" id="pred-text">CLEAR</h1>
+                
+                <div class="pred-metrics">
+                    <div class="metric">
+                        <div class="metric-label">CONFIDENCE</div>
+                        <div class="metric-value">
+                            <span id="conf-val">0.0%</span>
+                            <span class="metric-badge" id="conf-badge">HIGH</span>
+                        </div>
+                        <div class="metric-bar-bg">
+                            <div class="metric-bar-fill" id="conf-bar"></div>
+                        </div>
+                    </div>
+                    <div class="metric-divider"></div>
+                    <div class="metric">
+                        <div class="metric-label">INFERENCE</div>
+                        <div class="metric-value inference-val">
+                            <svg fill="none" stroke="#60a5fa" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" width="20" height="20"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                            <span id="infer-val">0</span> ms
+                        </div>
+                    </div>
                 </div>
             </div>
+
+            <!-- Class Probabilities Card -->
+            <div class="card probs-card">
+                <div class="card-title">CLASS PROBABILITIES</div>
+                
+                <div class="prob-row">
+                    <div class="prob-label">
+                        <span>🚙 Car</span>
+                    </div>
+                    <div class="prob-bar-container">
+                        <div class="prob-bar car-prob" id="prob-bar-car"></div>
+                    </div>
+                    <div class="prob-val" id="prob-val-car">0.0%</div>
+                </div>
+                
+                <div class="prob-row">
+                    <div class="prob-label">
+                        <span style="color:#94a3b8">✕ Not Car</span>
+                    </div>
+                    <div class="prob-bar-container">
+                        <div class="prob-bar not-car-prob" id="prob-bar-not-car"></div>
+                    </div>
+                    <div class="prob-val" id="prob-val-not-car">0.0%</div>
+                </div>
+            </div>
+            <!-- Actionable Intelligence Card -->
+            <div class="card suggestions-card" id="suggestions-card" style="display: none;">
+                <div class="card-title">ACTIONABLE INTELLIGENCE</div>
+                <div id="suggestions-container" class="suggestions-container">
+                    <!-- Suggestions will be dynamically added here -->
+                </div>
+            </div>
+            
+            <!-- Detection Details Card -->
+            <div class="card details-card" id="details-card">
+                <div class="card-title">DETECTION DETAILS</div>
+                <div class="table-container">
+                    <table class="details-table" id="details-table">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Type</th>
+                                <th>Confidence</th>
+                            </tr>
+                        </thead>
+                        <tbody id="details-table-body">
+                            <!-- Rows will be dynamically added here -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <!-- Model Metadata Cards -->
+            <div class="metadata-cards">
+                <div class="meta-card">
+                    <div class="meta-icon">
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" width="20" height="20"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                    </div>
+                    <div>
+                        <div class="meta-label">MODEL</div>
+                        <div class="meta-value">YOLOv8s (Obj Det)</div>
+                    </div>
+                </div>
+                <div class="meta-card">
+                    <div class="meta-icon">
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" width="20" height="20"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z"></path></svg>
+                    </div>
+                    <div>
+                        <div class="meta-label">INPUT SIZE</div>
+                        <div class="meta-value">640 × 640</div>
+                    </div>
+                </div>
+                <div class="meta-card">
+                    <div class="meta-icon">
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" width="20" height="20"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                    </div>
+                    <div>
+                        <div class="meta-label">DATASET</div>
+                        <div class="meta-value">Car Dataset · ~2,500 images</div>
+                    </div>
+                </div>
+            </div>
+
         </div>
     </div>
 
-    <!-- Link to our external JS -->
-    <script src="{{ url_for('static', path='js/main.js') }}"></script>
+    <script src="{{ url_for('static', path='js/main.js') }}?v=1.2"></script>
 </body>
 </html>
